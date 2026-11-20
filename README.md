@@ -1,6 +1,6 @@
 # ComprehensionLedger
 
-A small Swift package that meters **comprehension debt** (a term [Jason Gorman wrote about in 2025](https://codemanship.wordpress.com/2025/09/30/comprehension-debt-the-ticking-time-bomb-of-llm-generated-code/), popularised by [Addy Osmani's essay](https://addyosmani.com/blog/comprehension-debt/)): here, the agent-written code in a module that nobody has explained back since it landed. It gates agent-written changes by module tier and clears a module's debt only after a logged explain-back to a witness other than the explainer.
+A small Swift package that meters **comprehension debt** (a term [Jason Gorman wrote about in 2025](https://codemanship.wordpress.com/2025/09/30/comprehension-debt-the-ticking-time-bomb-of-llm-generated-code/), and [Addy Osmani expanded on in March 2026](https://addyosmani.com/blog/comprehension-debt/)): here, the agent-written code in a module that nobody has explained back since it landed. It gates agent-written changes by module tier and clears a module's debt only after a logged explain-back to a witness other than the explainer.
 
 Article: (added after publish)
 
@@ -89,7 +89,7 @@ Library only: `swift build` and `swift test`. The package targets iOS 17+ / macO
 ## Verification status (v1.0.0)
 
 - `rm -rf .build && swift build -Xswiftc -warnings-as-errors`: clean, on macOS with Xcode 27.2 (Swift 6.4.2).
-- `swift test`: 27 XCTest tests, 0 failures.
+- `swift test`: 28 XCTest tests, 0 failures.
 - Demo built with `xcodebuild` and run on a new iPhone 17 Pro Simulator (iOS 27.2) created for this run. Each screen was launched, checked to still be running after 8 seconds, and screenshotted with `simctl io screenshot`. The three screenshots above come from that run.
 - CI (`.github/workflows/ci.yml`) runs the same build, tests and Simulator screenshots on GitHub's macos-15 runners, with that image's default Xcode.
 
@@ -97,7 +97,7 @@ Library only: `swift build` and `swift test`. The package targets iOS 17+ / macO
 
 - r/ClaudeCode, ["A year after the 100% AI mandate nobody understands our code"](https://www.reddit.com/r/ClaudeCode/comments/1xq2n3t/a_year_after_the_100_ai_mandate_nobody/), and the [Hacker News discussion](https://news.ycombinator.com/item?id=50433079) where it was quoted (flagged; its authenticity is disputed in the thread).
 - Jason Gorman, [Comprehension Debt: The Ticking Time Bomb of LLM-Generated Code](https://codemanship.wordpress.com/2025/09/30/comprehension-debt-the-ticking-time-bomb-of-llm-generated-code/) (September 2025).
-- Addy Osmani, [Comprehension Debt: the hidden cost of AI generated code](https://addyosmani.com/blog/comprehension-debt/) (March 2026), the essay that popularised the term.
+- Addy Osmani, [Comprehension Debt - the hidden cost of AI generated code](https://addyosmani.com/blog/comprehension-debt/) (March 2026).
 - Fatbobman, [Swift Weekly #161: Reflections on Judging a Student Mobile App Competition](https://weekly.fatbobman.com/p/fatbobmans-swift-weekly-161).
 
 ## License

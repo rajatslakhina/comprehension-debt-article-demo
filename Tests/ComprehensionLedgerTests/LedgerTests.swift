@@ -57,6 +57,14 @@ final class LedgerTests: XCTestCase {
                        .accepted(debtAdded: ["Payments": 100]))
     }
 
+    func testDuplicateIDsAreComparedAfterTrimming() throws {
+        var ledger = try makeLedger()
+        XCTAssertTrue(ledger.submit(agentChange("PR-1", "Sources/Payments/A.swift", 10, record: fullRecord)).isAccepted)
+        XCTAssertEqual(ledger.submit(agentChange("PR-1 ", "Sources/Payments/A.swift", 10, record: fullRecord)),
+                       .blocked([.duplicateChange(id: "PR-1 ")]))
+        XCTAssertEqual(ledger.debt(for: "Payments"), 10)
+    }
+
     func testOverflowingLineCountsBlockInsteadOfCrashing() throws {
         let ledger = try makeLedger(budget: 100)
         let change = Change(id: "huge", author: agent, files: [

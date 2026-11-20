@@ -34,7 +34,7 @@ public struct ComprehensionLedger: Equatable, Sendable {
     public private(set) var debt: [String: Int]
     public private(set) var explainers: [String: Set<String>]
     public private(set) var history: [LedgerEvent]
-    /// IDs of accepted changes, so the same change can't be counted twice.
+    /// IDs of accepted changes (trimmed), so the same change can't be counted twice.
     public private(set) var acceptedChangeIDs: Set<String>
     /// Lowercased names of every agent that has submitted a change.
     public private(set) var agentNames: Set<String>
@@ -92,7 +92,7 @@ public struct ComprehensionLedger: Equatable, Sendable {
     public func evaluate(_ change: Change) -> Verdict {
         var reasons: [BlockReason] = []
         if change.id.isBlank { reasons.append(.blankID) }
-        if acceptedChangeIDs.contains(change.id) { reasons.append(.duplicateChange(id: change.id)) }
+        if acceptedChangeIDs.contains(change.id.trimmingWhitespace) { reasons.append(.duplicateChange(id: change.id)) }
         if change.files.isEmpty { reasons.append(.emptyChange) }
         switch change.author {
         case .human(let name):
@@ -163,7 +163,7 @@ public struct ComprehensionLedger: Equatable, Sendable {
         switch verdict {
         case .accepted(let added):
             for (module, lines) in added { debt[module, default: 0] += lines }
-            acceptedChangeIDs.insert(change.id)
+            acceptedChangeIDs.insert(change.id.trimmingWhitespace)
             history.append(.accepted(changeID: change.id, debtAdded: added))
         case .blocked(let reasons):
             history.append(.blocked(changeID: change.id, reasons: reasons))
