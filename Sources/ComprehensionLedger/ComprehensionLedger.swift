@@ -2,7 +2,7 @@
 public enum LedgerEvent: Equatable, Sendable {
     case accepted(changeID: String, debtAdded: [String: Int])
     case blocked(changeID: String, reasons: [BlockReason])
-    case explainedBack(module: String, explainer: String, witness: String, cleared: Int)
+    case explainedBack(module: String, explainer: String, witness: String, summary: String, cleared: Int)
     /// An explain-back the ledger refused. Nothing was cleared.
     case explainBackRejected(module: String, error: LedgerError)
 }
@@ -202,7 +202,8 @@ public struct ComprehensionLedger: Equatable, Sendable {
         let cleared = debt(for: rule.name)
         debt[rule.name] = 0
         explainers[rule.name, default: []].insert(explainer)
-        history.append(.explainedBack(module: rule.name, explainer: explainer, witness: witness, cleared: cleared))
+        history.append(.explainedBack(module: rule.name, explainer: explainer, witness: witness,
+                                      summary: explainBack.summary.trimmingWhitespace, cleared: cleared))
         return cleared
     }
 

@@ -1,6 +1,6 @@
 # ComprehensionLedger
 
-A small Swift package that meters **comprehension debt**: the agent-written code in a module that nobody has explained back since it landed. It gates agent-written changes by module tier and clears a module's debt only after a logged explain-back to a witness other than the explainer.
+A small Swift package that meters **comprehension debt** ([Addy Osmani's term](https://addyosmani.com/blog/comprehension-debt/)): here, the agent-written code in a module that nobody has explained back since it landed. It gates agent-written changes by module tier and clears a module's debt only after a logged explain-back to a witness other than the explainer.
 
 Article: (added after publish)
 
@@ -22,7 +22,7 @@ Paths are resolved before matching (`.` and `..`, repeated slashes), so `Sources
 
 An accepted change ID can't be submitted again (`.duplicateChange`), so its lines can't be counted twice. Line counts that would overflow `Int` block the change (`.lineCountOverflow`) instead of crashing.
 
-`recordExplainBack(_:)` matches the module name ignoring case and needs a non-blank explainer, witness and summary, a witness who isn't the explainer, and neither name may match an agent that has submitted a change to this ledger (`.agentAsParticipant`). Refused explain-backs throw and are logged in `history` as `.explainBackRejected`.
+`recordExplainBack(_:)` matches the module name ignoring case and needs a non-blank explainer, witness and summary, a witness who isn't the explainer, and neither name may match an agent that has submitted a change to this ledger (`.agentAsParticipant`). Accepted explain-backs are logged in `history` with their summary; refused ones throw and are logged as `.explainBackRejected`.
 
 ```swift
 import ComprehensionLedger
@@ -96,6 +96,7 @@ Library only: `swift build` and `swift test`. The package targets iOS 17+ / macO
 ## Sources
 
 - r/ClaudeCode, ["A year after the 100% AI mandate nobody understands our code"](https://www.reddit.com/r/ClaudeCode/comments/1xq2n3t/a_year_after_the_100_ai_mandate_nobody/), and the [Hacker News discussion](https://news.ycombinator.com/item?id=50433079) where it was quoted (flagged; its authenticity is disputed in the thread).
+- Addy Osmani, [Comprehension Debt: the hidden cost of AI generated code](https://addyosmani.com/blog/comprehension-debt/), where the term comes from.
 - Fatbobman, [Swift Weekly #161: Reflections on Judging a Student Mobile App Competition](https://weekly.fatbobman.com/p/fatbobmans-swift-weekly-161).
 
 ## License

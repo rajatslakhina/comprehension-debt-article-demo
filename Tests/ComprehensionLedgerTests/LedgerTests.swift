@@ -228,7 +228,8 @@ final class LedgerTests: XCTestCase {
         XCTAssertEqual(cleared, 70)
         XCTAssertEqual(ledger.debt(for: "Payments"), 0)
         XCTAssertEqual(ledger.explainers["Payments"], ["Asha"])
-        XCTAssertEqual(ledger.history.last, .explainedBack(module: "Payments", explainer: "Asha", witness: "Ben", cleared: 70))
+        XCTAssertEqual(ledger.history.last, .explainedBack(module: "Payments", explainer: "Asha", witness: "Ben",
+                                                           summary: "why", cleared: 70))
     }
 
     func testExplainBackRejectsSelfWitnessBlankFieldsAndUnmeteredModules() throws {
