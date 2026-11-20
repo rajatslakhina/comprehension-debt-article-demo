@@ -2,7 +2,7 @@
 
 A small Swift package that meters **comprehension debt** (a term [Jason Gorman wrote about in 2025](https://codemanship.wordpress.com/2025/09/30/comprehension-debt-the-ticking-time-bomb-of-llm-generated-code/), and [Addy Osmani expanded on in March 2026](https://addyosmani.com/blog/comprehension-debt/)): here, the agent-written code in a module that nobody has explained back since it landed. It gates agent-written changes by module tier and clears a module's debt only after a logged explain-back to a witness other than the explainer.
 
-Article: (added after publish)
+Article: [Comprehension Debt Is the Bill Your Coding Agent Never Sends. Here’s How I’d Meter It.](https://medium.com/@er.rajatlakhina/comprehension-debt-is-the-bill-your-coding-agent-never-sends-heres-how-i-d-meter-it-941bf781612a)
 
 <img src="Demo/Screenshots/week.png" alt="The demo app's week screen on the iOS Simulator: PR-101 accepted with 180 lines of Payments debt, PR-102 blocked because Onboarding needs a decision record, PR-103 accepted at 330 of 400, PR-104 blocked because 330 plus 120 lines would pass the 400-line budget, then an explain-back clears 330 lines." width="300"> <img src="Demo/Screenshots/week-end.png" alt="The rest of the week: the resubmitted PR-104 is accepted at 120 of 400, and PR-105, a Payments edit routed through Sources/Settings/../Payments, is blocked because Payments needs a decision record." width="300"> <img src="Demo/Screenshots/modules.png" alt="The modules screen: Payments must stay explainable with a 400-line budget, debt 120 of 400, explained back by Asha; Onboarding requires a decision record; Settings is open. Accepted 3 of 6 submissions this week." width="300">
 
@@ -91,7 +91,7 @@ Library only: `swift build` and `swift test`. The package targets iOS 17+ / macO
 - `rm -rf .build && swift build -Xswiftc -warnings-as-errors`: clean, on macOS with Xcode 27.2 (Swift 6.4.2).
 - `swift test`: 28 XCTest tests, 0 failures.
 - Demo built with `xcodebuild` and run on a new iPhone 17 Pro Simulator (iOS 27.2) created for this run. Each screen was launched, checked to still be running after 8 seconds, and screenshotted with `simctl io screenshot`. The three screenshots above come from that run.
-- CI (`.github/workflows/ci.yml`) runs the same build, tests and Simulator screenshots on GitHub's macos-15 runners, with that image's default Xcode.
+- CI (`.github/workflows/ci.yml`) runs the same build, tests and Simulator screenshots on GitHub's macos-15 runners, with that image's default Xcode. Run 44726756026 on this code: both jobs green.
 
 ## Sources
 
