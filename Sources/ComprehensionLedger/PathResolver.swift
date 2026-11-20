@@ -24,8 +24,10 @@ enum PathResolver {
 
     /// True when `path` is inside the directory `prefix`. Both must be
     /// canonical. `Sources/PaymentsUI/x.swift` is not inside `Sources/Payments`.
+    /// The comparison ignores case, because the default macOS file system
+    /// does: `sources/payments/x.swift` is the same file as `Sources/Payments/x.swift`.
     static func path(_ path: String, isInside prefix: String) -> Bool {
-        path.hasPrefix(prefix + "/")
+        path.lowercased().hasPrefix(prefix.lowercased() + "/")
     }
 }
 

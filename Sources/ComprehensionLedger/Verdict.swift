@@ -14,6 +14,11 @@ public enum BlockReason: Equatable, Sendable {
     case blankIdentity
     case invalidPath(String)
     case invalidLineCount(path: String, lines: Int)
+    /// The lines for one module add up to more than `Int` can hold.
+    case lineCountOverflow(module: String)
+    /// A change with this ID was already accepted. Accepting it again would
+    /// count its lines twice.
+    case duplicateChange(id: String)
     case missingRecord(module: String)
     case incompleteRecord(module: String, problems: [RecordProblem])
     /// Accepting the change would take the module's debt past its budget.
@@ -48,4 +53,7 @@ public enum LedgerError: Error, Equatable, Sendable {
     case moduleNotMetered(String)
     case blankExplainBackField
     case witnessIsExplainer
+    /// The explainer or witness has the name of an agent that submitted a
+    /// change to this ledger.
+    case agentAsParticipant(String)
 }

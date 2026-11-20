@@ -3,6 +3,8 @@ public enum LedgerEvent: Equatable, Sendable {
     case accepted(changeID: String, debtAdded: [String: Int])
     case blocked(changeID: String, reasons: [BlockReason])
     case explainedBack(module: String, explainer: String, witness: String, cleared: Int)
+    /// An explain-back the ledger refused. Nothing was cleared.
+    case explainBackRejected(module: String, error: LedgerError)
 }
 
 /// Meters comprehension debt per module and gates agent-written changes.
@@ -18,6 +20,13 @@ public enum LedgerEvent: Equatable, Sendable {
 /// Human-written changes need no record and add no debt. They do not clear
 /// debt either: only an explain-back does.
 ///
+/// Authorship and names are self-declared strings. The ledger records that an
+/// explain-back was logged; it cannot verify that it happened, that it
+/// happened without the agent, or that a name belongs to a person.
+///
+/// Path matching is lexical and ignores case. It does not follow symlinks,
+/// and paths outside every rule are not governed at all.
+///
 /// A change is judged as a whole. If any file blocks it, nothing is applied.
 /// The ledger is a value type and is not shared between threads.
 public struct ComprehensionLedger: Equatable, Sendable {
@@ -25,6 +34,10 @@ public struct ComprehensionLedger: Equatable, Sendable {
     public private(set) var debt: [String: Int]
     public private(set) var explainers: [String: Set<String>]
     public private(set) var history: [LedgerEvent]
+    /// IDs of accepted changes, so the same change can't be counted twice.
+    public private(set) var acceptedChangeIDs: Set<String>
+    /// Lowercased names of every agent that has submitted a change.
+    public private(set) var agentNames: Set<String>
 
     /// Canonical prefixes, longest first, so the most specific rule wins.
     private let resolvedRules: [(prefix: String, rule: ModuleRule)]
@@ -32,6 +45,7 @@ public struct ComprehensionLedger: Equatable, Sendable {
     public static func == (lhs: ComprehensionLedger, rhs: ComprehensionLedger) -> Bool {
         lhs.rules == rhs.rules && lhs.debt == rhs.debt
             && lhs.explainers == rhs.explainers && lhs.history == rhs.history
+            && lhs.acceptedChangeIDs == rhs.acceptedChangeIDs && lhs.agentNames == rhs.agentNames
     }
 
     public init(rules: [ModuleRule]) throws {
@@ -45,7 +59,7 @@ public struct ComprehensionLedger: Equatable, Sendable {
             guard let prefix = PathResolver.canonical(rule.pathPrefix) else {
                 throw LedgerError.invalidPrefix(rule.pathPrefix)
             }
-            guard prefixes.insert(prefix).inserted else { throw LedgerError.duplicatePrefix(prefix) }
+            guard prefixes.insert(prefix.lowercased()).inserted else { throw LedgerError.duplicatePrefix(prefix) }
             if case .mustStayExplainable(let budget) = rule.tier, budget <= 0 {
                 throw LedgerError.nonPositiveBudget(module: rule.name)
             }
@@ -56,6 +70,8 @@ public struct ComprehensionLedger: Equatable, Sendable {
         self.debt = [:]
         self.explainers = [:]
         self.history = []
+        self.acceptedChangeIDs = []
+        self.agentNames = []
     }
 
     /// The rule that governs a repository path, or `nil` if no rule covers it.
@@ -74,6 +90,7 @@ public struct ComprehensionLedger: Equatable, Sendable {
     public func evaluate(_ change: Change) -> Verdict {
         var reasons: [BlockReason] = []
         if change.id.isBlank { reasons.append(.blankID) }
+        if acceptedChangeIDs.contains(change.id) { reasons.append(.duplicateChange(id: change.id)) }
         if change.files.isEmpty { reasons.append(.emptyChange) }
         switch change.author {
         case .human(let name):
@@ -85,6 +102,7 @@ public struct ComprehensionLedger: Equatable, Sendable {
         // Lines per governed module, in first-seen order for stable output.
         var linesByModule: [String: Int] = [:]
         var touched: [ModuleRule] = []
+        var overflowed: Set<String> = []
         for file in change.files {
             guard file.linesChanged >= 0 else {
                 reasons.append(.invalidLineCount(path: file.path, lines: file.linesChanged))
@@ -98,12 +116,20 @@ public struct ComprehensionLedger: Equatable, Sendable {
                 continue
             }
             if linesByModule[rule.name] == nil { touched.append(rule) }
-            linesByModule[rule.name, default: 0] += file.linesChanged
+            let (sum, overflow) = linesByModule[rule.name, default: 0].addingReportingOverflow(file.linesChanged)
+            if overflow {
+                if !overflowed.contains(rule.name) {
+                    overflowed.insert(rule.name)
+                    reasons.append(.lineCountOverflow(module: rule.name))
+                }
+            } else {
+                linesByModule[rule.name] = sum
+            }
         }
 
         var debtAdded: [String: Int] = [:]
         if change.author.isAgent {
-            for rule in touched {
+            for rule in touched where !overflowed.contains(rule.name) {
                 let incoming = linesByModule[rule.name] ?? 0
                 switch rule.tier {
                 case .open:
@@ -115,7 +141,7 @@ public struct ComprehensionLedger: Equatable, Sendable {
                     let current = debt(for: rule.name)
                     if incoming > budget {
                         reasons.append(.changeLargerThanBudget(module: rule.name, incoming: incoming, budget: budget))
-                    } else if current + incoming > budget {
+                    } else if incoming > budget - current {
                         reasons.append(.explainBackRequired(module: rule.name, debt: current, incoming: incoming, budget: budget))
                     }
                     if incoming > 0 { debtAdded[rule.name] = incoming }
@@ -129,9 +155,13 @@ public struct ComprehensionLedger: Equatable, Sendable {
     @discardableResult
     public mutating func submit(_ change: Change) -> Verdict {
         let verdict = evaluate(change)
+        if case .agent(let name, _) = change.author, !name.isBlank {
+            agentNames.insert(name.trimmingWhitespace.lowercased())
+        }
         switch verdict {
         case .accepted(let added):
             for (module, lines) in added { debt[module, default: 0] += lines }
+            acceptedChangeIDs.insert(change.id)
             history.append(.accepted(changeID: change.id, debtAdded: added))
         case .blocked(let reasons):
             history.append(.blocked(changeID: change.id, reasons: reasons))
@@ -139,10 +169,20 @@ public struct ComprehensionLedger: Equatable, Sendable {
         return verdict
     }
 
-    /// Clears a metered module's debt after a human explain-back.
-    /// Returns the number of lines cleared.
+    /// Clears a metered module's debt after a logged explain-back.
+    /// Returns the number of lines cleared. A refused explain-back throws and
+    /// is logged in `history` as `.explainBackRejected`.
     @discardableResult
     public mutating func recordExplainBack(_ explainBack: ExplainBack) throws -> Int {
+        do {
+            return try applyExplainBack(explainBack)
+        } catch let error as LedgerError {
+            history.append(.explainBackRejected(module: explainBack.module, error: error))
+            throw error
+        }
+    }
+
+    private mutating func applyExplainBack(_ explainBack: ExplainBack) throws -> Int {
         guard let rule = rules.first(where: { $0.name == explainBack.module }) else {
             throw LedgerError.unknownModule(explainBack.module)
         }
@@ -153,6 +193,9 @@ public struct ComprehensionLedger: Equatable, Sendable {
             throw LedgerError.blankExplainBackField
         }
         guard explainer.lowercased() != witness.lowercased() else { throw LedgerError.witnessIsExplainer }
+        for name in [explainer, witness] where agentNames.contains(name.lowercased()) {
+            throw LedgerError.agentAsParticipant(name)
+        }
         let cleared = debt(for: rule.name)
         debt[rule.name] = 0
         explainers[rule.name, default: []].insert(explainer)

@@ -129,6 +129,8 @@ struct WeekView: View {
         case .blankIdentity: return "The author or driver is blank."
         case .invalidPath(let path): return "Invalid path: \(path)"
         case .invalidLineCount(let path, let lines): return "Invalid line count \(lines) for \(path)"
+        case .lineCountOverflow(let module): return "\(module): line count overflows."
+        case .duplicateChange(let id): return "\(id) was already accepted."
         case .missingRecord(let module): return "\(module) needs a decision record."
         case .incompleteRecord(let module, let problems): return "\(module) record is incomplete (\(problems.count) problems)."
         case .explainBackRequired(let module, let debt, let incoming, let budget):
@@ -188,13 +190,18 @@ struct ModulesView: View {
                     .padding(.vertical, 4)
                 }
             } footer: {
-                Text("Debt counts agent-written lines since the last explain-back. Human changes add none. Accepted \(acceptedCount) of \(changeCount) changes this week.")
+                Text("Debt counts agent-written lines since the last explain-back. Human changes add none. Accepted \(acceptedCount) of \(changeCount) submissions this week.")
             }
         }
     }
 
     var changeCount: Int {
-        ledger.history.filter { if case .explainedBack = $0 { return false }; return true }.count
+        ledger.history.filter {
+            switch $0 {
+            case .accepted, .blocked: return true
+            case .explainedBack, .explainBackRejected: return false
+            }
+        }.count
     }
     var acceptedCount: Int {
         ledger.history.filter { if case .accepted = $0 { return true }; return false }.count

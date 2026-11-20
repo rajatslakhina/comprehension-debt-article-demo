@@ -47,7 +47,35 @@ final class LedgerTests: XCTestCase {
         XCTAssertEqual(ledger.submit(agentChange("big", "Sources/Payments/A.swift", 101, record: fullRecord)),
                        .blocked([.changeLargerThanBudget(module: "Payments", incoming: 101, budget: 100)]))
         try ledger.recordExplainBack(ExplainBack(module: "Payments", explainer: "Asha", witness: "Ben", summary: "s"))
-        XCTAssertFalse(ledger.submit(agentChange("big", "Sources/Payments/A.swift", 101, record: fullRecord)).isAccepted)
+        XCTAssertEqual(ledger.submit(agentChange("big", "Sources/Payments/A.swift", 101, record: fullRecord)),
+                       .blocked([.changeLargerThanBudget(module: "Payments", incoming: 101, budget: 100)]))
+    }
+
+    func testASingleChangeExactlyAtTheBudgetIsAccepted() throws {
+        var ledger = try makeLedger(budget: 100)
+        XCTAssertEqual(ledger.submit(agentChange("full", "Sources/Payments/A.swift", 100, record: fullRecord)),
+                       .accepted(debtAdded: ["Payments": 100]))
+    }
+
+    func testOverflowingLineCountsBlockInsteadOfCrashing() throws {
+        let ledger = try makeLedger(budget: 100)
+        let change = Change(id: "huge", author: agent, files: [
+            FileDiff(path: "Sources/Payments/A.swift", linesChanged: Int.max),
+            FileDiff(path: "Sources/Payments/B.swift", linesChanged: Int.max),
+        ], record: fullRecord)
+        XCTAssertEqual(ledger.evaluate(change), .blocked([.lineCountOverflow(module: "Payments")]))
+        let maxBudget = try ComprehensionLedger(rules: [
+            ModuleRule(name: "P", pathPrefix: "P", tier: .mustStayExplainable(debtBudget: Int.max)),
+        ])
+        XCTAssertTrue(maxBudget.evaluate(agentChange("m", "P/A.swift", Int.max, record: fullRecord)).isAccepted)
+    }
+
+    func testAnAcceptedChangeCannotBeCountedTwice() throws {
+        var ledger = try makeLedger()
+        let change = agentChange("PR-1", "Sources/Payments/A.swift", 30, record: fullRecord)
+        XCTAssertTrue(ledger.submit(change).isAccepted)
+        XCTAssertEqual(ledger.submit(change), .blocked([.duplicateChange(id: "PR-1")]))
+        XCTAssertEqual(ledger.debt(for: "Payments"), 30)
     }
 
     func testLinesAcrossFilesInOneModuleAreSummed() throws {
@@ -61,15 +89,19 @@ final class LedgerTests: XCTestCase {
     }
 
     func testOneBlockingModuleBlocksTheWholeChangeAtomically() throws {
-        var ledger = try makeLedger()
+        var ledger = try ComprehensionLedger(rules: [
+            ModuleRule(name: "Payments", pathPrefix: "Sources/Payments", tier: .mustStayExplainable(debtBudget: 100)),
+            ModuleRule(name: "Auth", pathPrefix: "Sources/Auth", tier: .mustStayExplainable(debtBudget: 100)),
+        ])
+        _ = ledger.submit(agentChange("seed", "Sources/Payments/A.swift", 95, record: fullRecord))
         let change = Change(id: "mixed", author: agent, files: [
-            FileDiff(path: "Sources/Payments/A.swift", linesChanged: 10),
-            FileDiff(path: "Sources/Onboarding/B.swift", linesChanged: 10),
-        ], record: DecisionRecord(problem: "p", chosen: "c",
-                                  rejected: [RejectedAlternative(option: "o", reason: "r")], invariants: []))
+            FileDiff(path: "Sources/Auth/Login.swift", linesChanged: 20),
+            FileDiff(path: "Sources/Payments/B.swift", linesChanged: 10),
+        ], record: fullRecord)
         XCTAssertEqual(ledger.submit(change),
-                       .blocked([.incompleteRecord(module: "Payments", problems: [.noInvariant])]))
-        XCTAssertEqual(ledger.debt(for: "Payments"), 0)
+                       .blocked([.explainBackRequired(module: "Payments", debt: 95, incoming: 10, budget: 100)]))
+        XCTAssertEqual(ledger.debt(for: "Auth"), 0)
+        XCTAssertEqual(ledger.debt(for: "Payments"), 95)
     }
 
     // MARK: - Who pays
@@ -123,6 +155,13 @@ final class LedgerTests: XCTestCase {
         XCTAssertNil(ledger.rule(for: "Sources/Payments"))
     }
 
+    func testMatchingIgnoresCaseLikeTheDefaultMacFileSystem() throws {
+        let ledger = try makeLedger()
+        XCTAssertEqual(ledger.rule(for: "sources/payments/Refund.swift")?.name, "Payments")
+        XCTAssertEqual(ledger.evaluate(agentChange("c", "SOURCES/Payments/Refund.swift", 5)),
+                       .blocked([.missingRecord(module: "Payments")]))
+    }
+
     func testDotDotIsResolvedSoItCannotDodgeAMeteredModule() throws {
         let ledger = try makeLedger()
         XCTAssertEqual(ledger.rule(for: "Sources/Settings/../Payments/A.swift")?.name, "Payments")
@@ -145,6 +184,12 @@ final class LedgerTests: XCTestCase {
         ])
         XCTAssertEqual(ledger.rule(for: "Sources/Payments/A.swift")?.name, "Payments")
         XCTAssertEqual(ledger.rule(for: "Sources/Other/A.swift")?.name, "Core")
+        let reversed = try ComprehensionLedger(rules: [
+            ModuleRule(name: "Payments", pathPrefix: "Sources/Payments/", tier: .recordRequired),
+            ModuleRule(name: "Core", pathPrefix: "Sources", tier: .open),
+        ])
+        XCTAssertEqual(reversed.rule(for: "Sources/Payments/A.swift")?.name, "Payments")
+        XCTAssertEqual(reversed.rule(for: "Sources/Other/A.swift")?.name, "Core")
     }
 
     // MARK: - Malformed changes
@@ -181,9 +226,11 @@ final class LedgerTests: XCTestCase {
             ExplainBack(module: "Payments", explainer: "Asha", witness: " asha", summary: "s"))) {
             XCTAssertEqual($0 as? LedgerError, .witnessIsExplainer)
         }
-        XCTAssertThrowsError(try ledger.recordExplainBack(
-            ExplainBack(module: "Payments", explainer: "Asha", witness: "Ben", summary: " "))) {
-            XCTAssertEqual($0 as? LedgerError, .blankExplainBackField)
+        for (explainer, witness, summary) in [("Asha", "Ben", " "), (" ", "Ben", "s"), ("Asha", "", "s")] {
+            XCTAssertThrowsError(try ledger.recordExplainBack(
+                ExplainBack(module: "Payments", explainer: explainer, witness: witness, summary: summary))) {
+                XCTAssertEqual($0 as? LedgerError, .blankExplainBackField)
+            }
         }
         XCTAssertThrowsError(try ledger.recordExplainBack(
             ExplainBack(module: "Onboarding", explainer: "Asha", witness: "Ben", summary: "s"))) {
@@ -193,7 +240,23 @@ final class LedgerTests: XCTestCase {
             ExplainBack(module: "Billing", explainer: "Asha", witness: "Ben", summary: "s"))) {
             XCTAssertEqual($0 as? LedgerError, .unknownModule("Billing"))
         }
-        XCTAssertTrue(ledger.history.isEmpty)
+        XCTAssertEqual(ledger.history.count, 6)
+        XCTAssertEqual(ledger.history.first, .explainBackRejected(module: "Payments", error: .witnessIsExplainer))
+        XCTAssertTrue(ledger.explainers.isEmpty)
+    }
+
+    func testTheAgentCannotBeTheExplainerOrTheWitness() throws {
+        var ledger = try makeLedger()
+        _ = ledger.submit(agentChange("a", "Sources/Payments/A.swift", 40, record: fullRecord))
+        XCTAssertThrowsError(try ledger.recordExplainBack(
+            ExplainBack(module: "Payments", explainer: "Asha", witness: "claude code", summary: "s"))) {
+            XCTAssertEqual($0 as? LedgerError, .agentAsParticipant("claude code"))
+        }
+        XCTAssertThrowsError(try ledger.recordExplainBack(
+            ExplainBack(module: "Payments", explainer: "Claude Code", witness: "Ben", summary: "s"))) {
+            XCTAssertEqual($0 as? LedgerError, .agentAsParticipant("Claude Code"))
+        }
+        XCTAssertEqual(ledger.debt(for: "Payments"), 40)
     }
 
     // MARK: - Rules
@@ -209,6 +272,8 @@ final class LedgerTests: XCTestCase {
         expect([ModuleRule(name: "A", pathPrefix: "../A", tier: .open)], .invalidPrefix("../A"))
         expect([ModuleRule(name: "A", pathPrefix: "Src/A", tier: .open),
                 ModuleRule(name: "B", pathPrefix: "./Src/A/", tier: .open)], .duplicatePrefix("Src/A"))
+        expect([ModuleRule(name: "A", pathPrefix: "Src/A", tier: .open),
+                ModuleRule(name: "B", pathPrefix: "src/a", tier: .open)], .duplicatePrefix("src/a"))
         expect([ModuleRule(name: "A", pathPrefix: "A", tier: .mustStayExplainable(debtBudget: 0))],
                .nonPositiveBudget(module: "A"))
     }
