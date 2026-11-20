@@ -22,7 +22,7 @@ Paths are resolved before matching (`.` and `..`, repeated slashes), so `Sources
 
 An accepted change ID can't be submitted again (`.duplicateChange`), so its lines can't be counted twice. Line counts that would overflow `Int` block the change (`.lineCountOverflow`) instead of crashing.
 
-`recordExplainBack(_:)` needs a non-blank explainer, witness and summary, a witness who isn't the explainer, and neither name may match an agent that has submitted a change to this ledger (`.agentAsParticipant`). Refused explain-backs throw and are logged in `history` as `.explainBackRejected`.
+`recordExplainBack(_:)` matches the module name ignoring case and needs a non-blank explainer, witness and summary, a witness who isn't the explainer, and neither name may match an agent that has submitted a change to this ledger (`.agentAsParticipant`). Refused explain-backs throw and are logged in `history` as `.explainBackRejected`.
 
 ```swift
 import ComprehensionLedger
@@ -89,7 +89,7 @@ Library only: `swift build` and `swift test`. The package targets iOS 17+ / macO
 ## Verification status (v1.0.0)
 
 - `rm -rf .build && swift build -Xswiftc -warnings-as-errors`: clean, on macOS with Xcode 27.2 (Swift 6.4.2).
-- `swift test`: 25 XCTest tests, 0 failures.
+- `swift test`: 26 XCTest tests, 0 failures.
 - Demo built with `xcodebuild` and run on a new iPhone 17 Pro Simulator (iOS 27.2) created for this run. Each screen was launched, checked to still be running after 8 seconds, and screenshotted with `simctl io screenshot`. The three screenshots above come from that run.
 - CI (`.github/workflows/ci.yml`) runs the same build, tests and Simulator screenshots on GitHub's macos-15 runners, with that image's default Xcode.
 

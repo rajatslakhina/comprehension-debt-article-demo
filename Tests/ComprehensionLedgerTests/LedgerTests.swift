@@ -115,6 +115,17 @@ final class LedgerTests: XCTestCase {
         XCTAssertEqual(ledger.debt(for: "Payments"), 50)
     }
 
+    func testHumanChangesStillGetPathAndDuplicateChecks() throws {
+        var ledger = try makeLedger()
+        XCTAssertEqual(ledger.submit(Change(id: "h2", author: .human("Ben"),
+                                            files: [FileDiff(path: "../x.swift", linesChanged: 1)])),
+                       .blocked([.invalidPath("../x.swift")]))
+        let human = Change(id: "h", author: .human("Ben"),
+                           files: [FileDiff(path: "Sources/Payments/A.swift", linesChanged: 5)])
+        XCTAssertTrue(ledger.submit(human).isAccepted)
+        XCTAssertEqual(ledger.submit(human), .blocked([.duplicateChange(id: "h")]))
+    }
+
     func testOpenModuleAcceptsAgentChangesWithoutRecord() throws {
         var ledger = try makeLedger()
         XCTAssertEqual(ledger.submit(agentChange("s", "Sources/Settings/Theme.swift", 500)), .accepted(debtAdded: [:]))
@@ -213,7 +224,7 @@ final class LedgerTests: XCTestCase {
         var ledger = try makeLedger()
         _ = ledger.submit(agentChange("a", "Sources/Payments/A.swift", 70, record: fullRecord))
         let cleared = try ledger.recordExplainBack(
-            ExplainBack(module: "Payments", explainer: " Asha ", witness: "Ben", summary: "why"))
+            ExplainBack(module: "payments", explainer: " Asha ", witness: "Ben", summary: "why"))
         XCTAssertEqual(cleared, 70)
         XCTAssertEqual(ledger.debt(for: "Payments"), 0)
         XCTAssertEqual(ledger.explainers["Payments"], ["Asha"])
@@ -279,6 +290,8 @@ final class LedgerTests: XCTestCase {
         expect([ModuleRule(name: " ", pathPrefix: "A", tier: .open)], .blankModuleName)
         expect([ModuleRule(name: "A", pathPrefix: "A", tier: .open),
                 ModuleRule(name: "A", pathPrefix: "B", tier: .open)], .duplicateModuleName("A"))
+        expect([ModuleRule(name: "Pay", pathPrefix: "A", tier: .open),
+                ModuleRule(name: "pay", pathPrefix: "B", tier: .open)], .duplicateModuleName("pay"))
         expect([ModuleRule(name: "A", pathPrefix: "../A", tier: .open)], .invalidPrefix("../A"))
         expect([ModuleRule(name: "A", pathPrefix: "Src/A", tier: .open),
                 ModuleRule(name: "B", pathPrefix: "./Src/A/", tier: .open)], .duplicatePrefix("Src/A"))

@@ -55,7 +55,7 @@ public struct ComprehensionLedger: Equatable, Sendable {
         var resolved: [(prefix: String, rule: ModuleRule)] = []
         for rule in rules {
             guard !rule.name.isBlank else { throw LedgerError.blankModuleName }
-            guard names.insert(rule.name).inserted else { throw LedgerError.duplicateModuleName(rule.name) }
+            guard names.insert(rule.name.trimmingWhitespace.lowercased()).inserted else { throw LedgerError.duplicateModuleName(rule.name) }
             guard let prefix = PathResolver.canonical(rule.pathPrefix) else {
                 throw LedgerError.invalidPrefix(rule.pathPrefix)
             }
@@ -74,7 +74,9 @@ public struct ComprehensionLedger: Equatable, Sendable {
         self.agentNames = []
     }
 
-    /// The rule that governs a repository path, or `nil` if no rule covers it.
+    /// The rule that governs a repository path, or `nil` if the path is invalid
+    /// (absolute, backslash, above the root) or no rule covers it. Use
+    /// `evaluate(_:)` to tell the two apart.
     public func rule(for path: String) -> ModuleRule? {
         guard let canonical = PathResolver.canonical(path) else { return nil }
         return rule(forCanonical: canonical)
@@ -183,7 +185,8 @@ public struct ComprehensionLedger: Equatable, Sendable {
     }
 
     private mutating func applyExplainBack(_ explainBack: ExplainBack) throws -> Int {
-        guard let rule = rules.first(where: { $0.name == explainBack.module }) else {
+        let wanted = explainBack.module.trimmingWhitespace.lowercased()
+        guard let rule = rules.first(where: { $0.name.trimmingWhitespace.lowercased() == wanted }) else {
             throw LedgerError.unknownModule(explainBack.module)
         }
         guard case .mustStayExplainable = rule.tier else { throw LedgerError.moduleNotMetered(rule.name) }
