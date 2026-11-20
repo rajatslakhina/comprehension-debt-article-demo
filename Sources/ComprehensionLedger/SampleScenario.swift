@@ -1,5 +1,5 @@
 /// The scripted week the demo app plays, and the article describes.
-/// Tests check every outcome, so the article cannot drift from the code.
+/// Tests pin every outcome, so the demo and the documented week stay in sync with the code.
 public enum SampleScenario {
     public static let paymentsBudget = 400
 

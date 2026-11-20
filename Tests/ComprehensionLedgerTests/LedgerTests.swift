@@ -222,6 +222,12 @@ final class LedgerTests: XCTestCase {
         XCTAssertEqual(ledger.evaluate(Change(id: "n", author: .agent(name: "Claude Code", drivenBy: " "),
                                               files: [FileDiff(path: "README.md", linesChanged: 1)])),
                        .blocked([.blankIdentity]))
+        XCTAssertEqual(ledger.evaluate(Change(id: "n2", author: .agent(name: " ", drivenBy: "Asha"),
+                                              files: [FileDiff(path: "README.md", linesChanged: 1)])),
+                       .blocked([.blankIdentity]))
+        XCTAssertEqual(ledger.evaluate(Change(id: "n3", author: .human(" "),
+                                              files: [FileDiff(path: "README.md", linesChanged: 1)])),
+                       .blocked([.blankIdentity]))
         XCTAssertEqual(ledger.evaluate(agentChange("neg", "Sources/Payments/A.swift", -5, record: fullRecord)),
                        .blocked([.invalidLineCount(path: "Sources/Payments/A.swift", lines: -5)]))
     }

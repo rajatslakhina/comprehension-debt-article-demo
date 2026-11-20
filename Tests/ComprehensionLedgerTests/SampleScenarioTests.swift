@@ -36,6 +36,17 @@ final class SampleScenarioTests: XCTestCase {
         XCTAssertEqual(ledger.debt(for: "Payments"), 120)
         XCTAssertEqual(ledger.explainers["Payments"], ["Asha"])
         XCTAssertEqual(ledger.history.count, 7)
+        guard ledger.history.count == 7 else { return }
+        XCTAssertEqual(ledger.history[0], .accepted(changeID: "PR-101", debtAdded: ["Payments": 180]))
+        XCTAssertEqual(ledger.history[1], .blocked(changeID: "PR-102", reasons: [.missingRecord(module: "Onboarding")]))
+        XCTAssertEqual(ledger.history[2], .accepted(changeID: "PR-103", debtAdded: ["Payments": 150]))
+        if case .explainedBack(let module, let explainer, let witness, _, let cleared) = ledger.history[4] {
+            XCTAssertEqual([module, explainer, witness], ["Payments", "Asha", "Ben"])
+            XCTAssertEqual(cleared, 330)
+        } else {
+            XCTFail("step 5 should be an explain-back")
+        }
+        XCTAssertEqual(ledger.history[5], .accepted(changeID: "PR-104", debtAdded: ["Payments": 120]))
         XCTAssertEqual(SampleScenario.paymentsBudget, 400)
     }
 
