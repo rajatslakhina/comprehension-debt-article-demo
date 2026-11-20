@@ -259,6 +259,16 @@ final class LedgerTests: XCTestCase {
         XCTAssertEqual(ledger.debt(for: "Payments"), 40)
     }
 
+    func testAnAgentWhoseOnlyChangeWasBlockedStillCannotWitness() throws {
+        var ledger = try makeLedger()
+        let blocked = ledger.submit(agentChange("a", "Sources/Payments/A.swift", 10))
+        XCTAssertFalse(blocked.isAccepted)
+        XCTAssertThrowsError(try ledger.recordExplainBack(
+            ExplainBack(module: "Payments", explainer: "Asha", witness: "Claude Code", summary: "s"))) {
+            XCTAssertEqual($0 as? LedgerError, .agentAsParticipant("Claude Code"))
+        }
+    }
+
     // MARK: - Rules
 
     func testInvalidRulesThrow() {

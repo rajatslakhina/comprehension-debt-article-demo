@@ -80,7 +80,7 @@ Library only: `swift build` and `swift test`. The package targets iOS 17+ / macO
 
 - It's an in-memory library. Until you wire it into CI or a merge queue, it gates nothing; persisting it is up to you.
 - Lines changed are a crude proxy for how much understanding a change needs, and only agent-written lines are metered. Human code nobody understands any more is invisible to it.
-- Authorship is self-declared: a change labelled `.human` skips every check. Names are plain strings. The ledger refuses an explain-back that names an agent it has seen, but it records that an explain-back was logged; it can't verify that it happened, that it happened without the agent, or that either name is a person. It is a process gate, not authentication or access control.
+- Authorship is self-declared: a change labelled `.human` skips every record and budget check. Names are plain strings. The ledger refuses an explain-back that names an agent it has seen, but it records that an explain-back was logged; it can't verify that it happened, that it happened without the agent, or that either name is a person. It is a process gate, not authentication or access control.
 - It checks that a decision record is complete, not that it is true. A witness can still nod along to a bad explanation.
 - Path matching is lexical: it ignores case but doesn't follow symlinks, and paths outside every rule are accepted ungoverned. Git normalises paths in diffs, so the `..` case in the demo is illustrative; real bypasses are more likely symlinks and moves.
 - Budgets can be gamed by splitting a change into smaller ones. The explain-back is the real control.
@@ -89,7 +89,7 @@ Library only: `swift build` and `swift test`. The package targets iOS 17+ / macO
 ## Verification status (v1.0.0)
 
 - `rm -rf .build && swift build -Xswiftc -warnings-as-errors`: clean, on macOS with Xcode 27.2 (Swift 6.4.2).
-- `swift test`: 24 XCTest tests, 0 failures.
+- `swift test`: 25 XCTest tests, 0 failures.
 - Demo built with `xcodebuild` and run on a new iPhone 17 Pro Simulator (iOS 27.2) created for this run. Each screen was launched, checked to still be running after 8 seconds, and screenshotted with `simctl io screenshot`. The three screenshots above come from that run.
 - CI (`.github/workflows/ci.yml`) runs the same build, tests and Simulator screenshots on GitHub's macos-15 runners, with that image's default Xcode.
 

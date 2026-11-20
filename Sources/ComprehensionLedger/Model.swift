@@ -24,7 +24,7 @@ public enum ExplainTier: Equatable, Sendable {
     /// Agent changes must carry a decision record with at least one rejected
     /// alternative and one invariant, and their changed lines accrue as
     /// comprehension debt. Once the next change would push the debt past
-    /// `debtBudget`, the module needs a human explain-back first.
+    /// `debtBudget`, the module needs a logged explain-back first.
     case mustStayExplainable(debtBudget: Int)
 }
 

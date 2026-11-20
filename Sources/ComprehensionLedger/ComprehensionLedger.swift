@@ -14,7 +14,7 @@ public enum LedgerEvent: Equatable, Sendable {
 /// - `.recordRequired`: agent changes need a complete decision record.
 /// - `.mustStayExplainable`: agent changes need a complete record with an
 ///   invariant, and their lines add to the module's debt. A change that would
-///   take the debt past the budget is blocked until a human explain-back
+///   take the debt past the budget is blocked until a logged explain-back
 ///   clears it.
 ///
 /// Human-written changes need no record and add no debt. They do not clear
