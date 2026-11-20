@@ -1,6 +1,6 @@
 # ComprehensionLedger
 
-A small Swift package that meters **comprehension debt** (a term from [Jason Gorman](https://codemanship.wordpress.com/2025/09/30/comprehension-debt-the-ticking-time-bomb-of-llm-generated-code/), popularised by [Addy Osmani](https://addyosmani.com/blog/comprehension-debt/)): here, the agent-written code in a module that nobody has explained back since it landed. It gates agent-written changes by module tier and clears a module's debt only after a logged explain-back to a witness other than the explainer.
+A small Swift package that meters **comprehension debt** (a term [Jason Gorman wrote about in 2025](https://codemanship.wordpress.com/2025/09/30/comprehension-debt-the-ticking-time-bomb-of-llm-generated-code/), popularised by [Addy Osmani's essay](https://addyosmani.com/blog/comprehension-debt/)): here, the agent-written code in a module that nobody has explained back since it landed. It gates agent-written changes by module tier and clears a module's debt only after a logged explain-back to a witness other than the explainer.
 
 Article: (added after publish)
 
