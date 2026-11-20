@@ -232,6 +232,19 @@ final class LedgerTests: XCTestCase {
                                                            summary: "why", cleared: 70))
     }
 
+    func testExplainBackClearsOnlyItsModule() throws {
+        var ledger = try ComprehensionLedger(rules: [
+            ModuleRule(name: "Payments", pathPrefix: "Sources/Payments", tier: .mustStayExplainable(debtBudget: 100)),
+            ModuleRule(name: "Auth", pathPrefix: "Sources/Auth", tier: .mustStayExplainable(debtBudget: 100)),
+        ])
+        _ = ledger.submit(agentChange("p", "Sources/Payments/A.swift", 40, record: fullRecord))
+        _ = ledger.submit(agentChange("a", "Sources/Auth/B.swift", 25, record: fullRecord))
+        XCTAssertEqual(try ledger.recordExplainBack(
+            ExplainBack(module: "Payments", explainer: "Asha", witness: "Ben", summary: "s")), 40)
+        XCTAssertEqual(ledger.debt(for: "Payments"), 0)
+        XCTAssertEqual(ledger.debt(for: "Auth"), 25)
+    }
+
     func testExplainBackRejectsSelfWitnessBlankFieldsAndUnmeteredModules() throws {
         var ledger = try makeLedger()
         XCTAssertThrowsError(try ledger.recordExplainBack(

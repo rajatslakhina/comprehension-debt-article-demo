@@ -1,6 +1,6 @@
 # ComprehensionLedger
 
-A small Swift package that meters **comprehension debt** ([Addy Osmani's term](https://addyosmani.com/blog/comprehension-debt/)): here, the agent-written code in a module that nobody has explained back since it landed. It gates agent-written changes by module tier and clears a module's debt only after a logged explain-back to a witness other than the explainer.
+A small Swift package that meters **comprehension debt** (a term from [Jason Gorman](https://codemanship.wordpress.com/2025/09/30/comprehension-debt-the-ticking-time-bomb-of-llm-generated-code/), popularised by [Addy Osmani](https://addyosmani.com/blog/comprehension-debt/)): here, the agent-written code in a module that nobody has explained back since it landed. It gates agent-written changes by module tier and clears a module's debt only after a logged explain-back to a witness other than the explainer.
 
 Article: (added after publish)
 
@@ -34,7 +34,7 @@ var ledger = try ComprehensionLedger(rules: [
     ModuleRule(name: "Settings", pathPrefix: "Sources/Settings", tier: .open),
 ])
 
-let verdict = ledger.submit(Change(
+ledger.submit(Change(
     id: "PR-104",
     author: .agent(name: "Claude Code", drivenBy: "Asha"),
     files: [FileDiff(path: "Sources/Payments/Refund.swift", linesChanged: 120)],
@@ -82,21 +82,22 @@ Library only: `swift build` and `swift test`. The package targets iOS 17+ / macO
 - Lines changed are a crude proxy for how much understanding a change needs, and only agent-written lines are metered. Human code nobody understands any more is invisible to it.
 - Authorship is self-declared: a change labelled `.human` skips every record and budget check. Names are plain strings. The ledger refuses an explain-back that names an agent it has seen, but it records that an explain-back was logged; it can't verify that it happened, that it happened without the agent, or that either name is a person. It is a process gate, not authentication or access control.
 - It checks that a decision record is complete, not that it is true. A witness can still nod along to a bad explanation.
-- Path matching is lexical: it ignores case but doesn't follow symlinks, and paths outside every rule are accepted ungoverned. Git normalises paths in diffs, so the `..` case in the demo is illustrative; real bypasses are more likely symlinks and moves.
+- Path matching is lexical: it ignores case but doesn't follow symlinks, paths outside every rule are accepted ungoverned, and a file moved out of a module is judged only by where it lands. Git normalises paths in diffs, so the `..` case in the demo is illustrative; real bypasses are more likely symlinks and moves.
 - Budgets can be gamed by splitting a change into smaller ones. The explain-back is the real control.
 - The rule is mine, not a standard. The tiers and the 400-line budget are an example.
 
 ## Verification status (v1.0.0)
 
 - `rm -rf .build && swift build -Xswiftc -warnings-as-errors`: clean, on macOS with Xcode 27.2 (Swift 6.4.2).
-- `swift test`: 26 XCTest tests, 0 failures.
+- `swift test`: 27 XCTest tests, 0 failures.
 - Demo built with `xcodebuild` and run on a new iPhone 17 Pro Simulator (iOS 27.2) created for this run. Each screen was launched, checked to still be running after 8 seconds, and screenshotted with `simctl io screenshot`. The three screenshots above come from that run.
 - CI (`.github/workflows/ci.yml`) runs the same build, tests and Simulator screenshots on GitHub's macos-15 runners, with that image's default Xcode.
 
 ## Sources
 
 - r/ClaudeCode, ["A year after the 100% AI mandate nobody understands our code"](https://www.reddit.com/r/ClaudeCode/comments/1xq2n3t/a_year_after_the_100_ai_mandate_nobody/), and the [Hacker News discussion](https://news.ycombinator.com/item?id=50433079) where it was quoted (flagged; its authenticity is disputed in the thread).
-- Addy Osmani, [Comprehension Debt: the hidden cost of AI generated code](https://addyosmani.com/blog/comprehension-debt/), where the term comes from.
+- Jason Gorman, [Comprehension Debt: The Ticking Time Bomb of LLM-Generated Code](https://codemanship.wordpress.com/2025/09/30/comprehension-debt-the-ticking-time-bomb-of-llm-generated-code/) (September 2025).
+- Addy Osmani, [Comprehension Debt: the hidden cost of AI generated code](https://addyosmani.com/blog/comprehension-debt/) (March 2026), the essay that popularised the term.
 - Fatbobman, [Swift Weekly #161: Reflections on Judging a Student Mobile App Competition](https://weekly.fatbobman.com/p/fatbobmans-swift-weekly-161).
 
 ## License
